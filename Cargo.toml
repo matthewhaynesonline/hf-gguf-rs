@@ -1,6 +1,8 @@
 [package]
 name = "hf-gguf-rs"
-version = "0.1.0"
+version = "0.0.1"
+description = "Rust version of llama.cpp tooling. For example convert_hf_to_gguf.py"
 edition = "2021"
 
 [dependencies]
+clap = { version = "4.5.27", features = ["derive"] }
