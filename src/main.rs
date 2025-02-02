@@ -46,7 +46,7 @@ struct Cli {
     no_lazy: bool,
 
     #[arg(long, help = "Name of the model.")]
-    mode_file: Option<String>,
+    model_name: Option<String>,
 
     #[arg(long, help = "Increase output verbosity.")]
     verbose: bool,
@@ -106,8 +106,8 @@ fn cli_debug_print(cli: &Cli) {
     println!("Value for --use-temp-file: {}", cli.use_temp_file);
     println!("Value for --no-lazy: {}", cli.no_lazy);
 
-    if let Some(mode_file) = cli.mode_file.as_deref() {
-        println!("Value for --name: {mode_file}");
+    if let Some(model_name) = cli.model_name.as_deref() {
+        println!("Value for --model-name: {model_name}");
     }
 
     println!("Value for --verbose: {}", cli.verbose);
