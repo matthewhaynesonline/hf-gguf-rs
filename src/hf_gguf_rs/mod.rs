@@ -1,6 +1,7 @@
 use std::{io, path::PathBuf};
 
 pub mod gguf;
+pub mod model;
 pub mod outtype;
 
 // class SentencePieceTokenTypes(IntEnum)

@@ -1,9 +1,9 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, process};
 
-use clap::Parser;
+use clap::{error::ErrorKind, CommandFactory, Parser};
 
 pub mod hf_gguf_rs;
-use hf_gguf_rs::{outtype::Outtype, validate_model_dir};
+use hf_gguf_rs::{model::Model, outtype::Outtype, validate_model_dir};
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -80,16 +80,32 @@ struct Cli {
 
 fn main() {
     let cli = Cli::parse();
+    let mut cmd = Cli::command();
+
+    // TODO: required model param validation error when
+    if cli.print_supported_models {
+        let supported_models = Model::get_registered_models();
+
+        for model_name in supported_models {
+            println!("- {model_name}");
+        }
+        // TODO: refactor
+        process::exit(0);
+        // return Ok(());
+    }
+
+    match validate_model_dir(&cli.model) {
+        Ok(_) => println!("{} exists and is a directory.", &cli.model.display()),
+        Err(e) => {
+            let error_message = format!("model '{}' error: {e}", &cli.model.display());
+            cmd.error(ErrorKind::ValueValidation, error_message).exit();
+        }
+    }
 
     cli_debug_print(&cli);
 }
 
 fn cli_debug_print(cli: &Cli) {
-    match validate_model_dir(&cli.model) {
-        Ok(_) => println!("{} exists and is a directory.", &cli.model.display()),
-        Err(e) => eprintln!("model '{}' error: {e}", &cli.model.display()),
-    }
-
     println!("Value for --vocab-only: {}", cli.vocab_only);
 
     println!("Value for --outtype: {}", &cli.outtype);
