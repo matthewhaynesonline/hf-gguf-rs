@@ -1,9 +1,11 @@
-use std::{path::PathBuf, process};
+use std::path::PathBuf;
 
 use clap::{error::ErrorKind, CommandFactory, Parser};
 
 pub mod hf_gguf_rs;
-use hf_gguf_rs::{model::Model, outtype::Outtype, validate_model_dir};
+use hf_gguf_rs::{
+    model::Model, outtype::Outtype, validate_is_split_and_use_temp_file, validate_model_dir,
+};
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -11,7 +13,7 @@ struct Cli {
     // parse_args()
     // https://github.com/ggerganov/llama.cpp/blob/864a0b67a6c8f648c43ce8271f9cb2e12dd5df6e/convert_hf_to_gguf.py#L4950
     #[arg(help = "Directory containing the model file.")]
-    model: PathBuf,
+    model: Option<PathBuf>,
 
     #[arg(long, help = "Extract only the vocab.")]
     vocab_only: bool,
@@ -82,7 +84,11 @@ fn main() {
     let cli = Cli::parse();
     let mut cmd = Cli::command();
 
-    // TODO: required model param validation error when
+    // llama.cpp hf-to-gguf has weird api surface where model is required
+    // but if the print supported models is passed in then it's bypassed
+    //
+    // TODO: probably refactor this to a separate command, but
+    // keeping for now to maintain api compatibility
     if cli.print_supported_models {
         let supported_models = Model::get_registered_models();
 
@@ -90,28 +96,47 @@ fn main() {
             println!("- {model_name}");
         }
         // TODO: refactor
-        process::exit(0);
-        // return Ok(());
+        // process::exit(0);
+        return;
     }
 
-    match validate_model_dir(&cli.model) {
-        Ok(_) => println!("{} exists and is a directory.", &cli.model.display()),
-        Err(e) => {
-            let error_message = format!("model '{}' error: {e}", &cli.model.display());
-            cmd.error(ErrorKind::ValueValidation, error_message).exit();
-        }
+    if cli.model.is_none() {
+        cmd.error(ErrorKind::MissingRequiredArgument, "MODEL is required")
+            .exit()
     }
 
-    cli_debug_print(&cli);
+    let dir_model = cli.model.as_ref().unwrap();
+
+    if let Err(e) = validate_model_dir(dir_model) {
+        let error_message = format!("MODEL '{}' error: {e}", dir_model.display());
+        cmd.error(ErrorKind::ValueValidation, error_message).exit();
+    }
+
+    if let Err(error_message) =
+        validate_is_split_and_use_temp_file(cli.split_max_tensors, cli.use_temp_file)
+    {
+        cmd.error(ErrorKind::ValueValidation, error_message).exit();
+    }
+
+    let fname_out = match cli.outfile.as_ref() {
+        Some(outfile) => outfile,
+        None => &dir_model.to_path_buf(),
+    };
+
+    println!("Loading model: {}", dir_model.display());
+
+    // cli_debug_print(&cli, &fname_out);
 }
 
-fn cli_debug_print(cli: &Cli) {
+fn cli_debug_print(cli: &Cli, fname_out: &PathBuf) {
+    println!("Value for fname_out: {}", fname_out.display());
+
     println!("Value for --vocab-only: {}", cli.vocab_only);
 
-    println!("Value for --outtype: {}", &cli.outtype);
+    println!("Value for --outtype: {}", cli.outtype);
     println!(
         "Value for --ftype_map: {:?}",
-        &cli.outtype.to_llama_file_type()
+        cli.outtype.to_llama_file_type()
     );
 
     if let Some(outfile) = cli.outfile.as_deref() {
