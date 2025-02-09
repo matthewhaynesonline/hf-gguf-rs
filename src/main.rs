@@ -4,8 +4,11 @@ use clap::{error::ErrorKind, CommandFactory, Parser};
 
 pub mod hf_gguf_rs;
 use hf_gguf_rs::{
-    model::Model, outtype::Outtype, split_max_size_str_to_n_bytes,
-    validate_is_split_and_use_temp_file, validate_model_dir,
+    cli_args::{
+        split_max_size_str_to_n_bytes, validate_is_split_and_use_temp_file, validate_model_dir,
+    },
+    model::Model,
+    outtype::Outtype,
 };
 
 #[derive(Parser)]
@@ -130,11 +133,12 @@ fn main() {
     println!("Loading model: {}", dir_model.display());
     // Model::load_model(&dir_model);
 
-    // cli_debug_print(&cli, &fname_out);
+    // cli_debug_print(&cli, &fname_out, split_max_size);
 }
 
-fn cli_debug_print(cli: &Cli, fname_out: &PathBuf) {
+fn cli_debug_print(cli: &Cli, fname_out: &PathBuf, split_max_size: i64) {
     println!("Value for fname_out: {}", fname_out.display());
+    println!("Value for split_max_size: {split_max_size}");
 
     println!("Value for --vocab-only: {}", cli.vocab_only);
 
@@ -158,7 +162,7 @@ fn cli_debug_print(cli: &Cli, fname_out: &PathBuf) {
 
     println!("Value for --verbose: {}", cli.verbose);
     println!("Value for --split-max-tensors: {}", cli.split_max_tensors);
-    // println!("Value for --split-max-size: {}", cli.split_max_size);
+    println!("Value for --split-max-size: {}", cli.split_max_size);
     println!("Value for --dry-run: {}", cli.dry_run);
     println!(
         "Value for --no-tensor-first-split: {}",
