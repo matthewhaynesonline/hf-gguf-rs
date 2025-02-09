@@ -4,7 +4,8 @@ use clap::{error::ErrorKind, CommandFactory, Parser};
 
 pub mod hf_gguf_rs;
 use hf_gguf_rs::{
-    model::Model, outtype::Outtype, validate_is_split_and_use_temp_file, validate_model_dir,
+    model::Model, outtype::Outtype, split_max_size_str_to_n_bytes,
+    validate_is_split_and_use_temp_file, validate_model_dir,
 };
 
 #[derive(Parser)]
@@ -56,11 +57,9 @@ struct Cli {
     #[arg(long, help = "Max tensors in each split.", default_value_t = 0)]
     split_max_tensors: i32,
 
-    // TODO: revisit this one. py has str, but maybe should be i32?
-    // #[arg(long, help = "max size per split N(M|G)", default_value_t = 0)]
-    // split_max_size: i32,
+    #[arg(long, help = "max size per split N(M|G)", default_value_t = String::from("0"))]
+    split_max_size: String,
 
-    //
     #[arg(
         long,
         help = "Only print out a split plan and exit, without writing any new files."
@@ -123,7 +122,13 @@ fn main() {
         None => &dir_model.to_path_buf(),
     };
 
+    let split_max_size = match split_max_size_str_to_n_bytes(&cli.split_max_size) {
+        Ok(n) => n,
+        Err(error_message) => cmd.error(ErrorKind::ValueValidation, error_message).exit(),
+    };
+
     println!("Loading model: {}", dir_model.display());
+    // Model::load_model(&dir_model);
 
     // cli_debug_print(&cli, &fname_out);
 }
